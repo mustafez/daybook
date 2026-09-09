@@ -82,14 +82,39 @@
     width: 24px; height: 24px; border-radius: 50%;
     border: 2px solid var(--accent-dim); background: transparent;
     flex-shrink: 0; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;
+    margin-top: 2px;
   }
   .check.on { background: var(--accent); border-color: var(--accent); }
   .check svg { display: none; }
   .check.on svg { display: block; }
-  .item-name { flex: 1; font-size: 15px; }
+  .item-body { flex: 1; min-width: 0; cursor: pointer; }
+  .item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .item-name { font-size: 15px; }
   .item-name.done { color: var(--text2); text-decoration: line-through; }
+  .item-pct { font-size: 12.5px; color: var(--text2); flex-shrink: 0; }
+  .item-pct.full { color: var(--accent); font-weight: 600; }
+  .mini-track { height: 4px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .mini-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .tag-row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
   .item-tag { font-size: 11px; color: var(--text2); background: var(--surface2); padding: 3px 8px; border-radius: 20px; }
-  .remove { background: none; border: none; color: var(--text2); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 6px; }
+  .item-tag.imp-high { color: var(--accent); }
+  .slider-row { padding: 2px 4px 14px 40px; border-bottom: 1px solid var(--surface2); }
+  .slider-row input[type="range"] {
+    width: 100%; height: 30px; -webkit-appearance: none; background: transparent; margin: 0;
+  }
+  .slider-row input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px; background: var(--surface2); border-radius: 3px;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); margin-top: -8px; border: none;
+  }
+  .slider-quick { display: flex; gap: 6px; margin-top: 8px; }
+  .slider-quick button {
+    flex: 1; padding: 7px 0; border-radius: 8px; border: 1px solid var(--surface2);
+    background: transparent; color: var(--text2); font-size: 12px; cursor: pointer;
+  }
+  .remove { background: none; border: none; color: var(--text2); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 6px; flex-shrink: 0; align-self: flex-start; }
   .section-title { font-size: 13px; color: var(--text2); margin: 18px 0 10px; }
   .avg-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; }
   .avg-num { font-size: 32px; font-weight: 600; }
@@ -169,6 +194,12 @@
         <button class="daychip" data-day="5">Fr</button>
         <button class="daychip" data-day="6">Sa</button>
       </div>
+      <div style="font-size:12px;color:var(--text2);margin:2px 0 8px;">How important is this task?</div>
+      <div class="type-row" id="impRow">
+        <button class="chip" id="impLow" data-weight="1">Low</button>
+        <button class="chip on" id="impMed" data-weight="2">Medium</button>
+        <button class="chip" id="impHigh" data-weight="3">High</button>
+      </div>
       <div class="sheet-actions">
         <button class="btn-ghost" id="cancelAdd">Cancel</button>
         <button class="btn" id="confirmAdd">Add task</button>
@@ -222,6 +253,7 @@
   // ---------- state ----------
   var state = { tasks: [], completions: {} };
   var tab = "today";
+  var expandedId = null;
   var today = new Date();
   var todayStr = fmt(today);
 
@@ -242,6 +274,20 @@
   }
 
   // ---------- core logic ----------
+  function getWeight(t) { return t.weight || 2; }
+  function weightLabel(w) { return w === 1 ? "Low" : w === 3 ? "High" : "Medium"; }
+  function getProgress(dateStr, taskId) {
+    var day = state.completions[dateStr];
+    if (!day || !(taskId in day)) return 0;
+    var v = day[taskId];
+    if (v === true) return 100;
+    if (v === false || v == null) return 0;
+    return Math.max(0, Math.min(100, Number(v) || 0));
+  }
+  function setProgress(dateStr, taskId, value) {
+    if (!state.completions[dateStr]) state.completions[dateStr] = {};
+    state.completions[dateStr][taskId] = Math.max(0, Math.min(100, Math.round(value)));
+  }
   function dayOfWeek(dateStr) {
     return new Date(dateStr + "T00:00:00").getDay();
   }
@@ -257,17 +303,27 @@
   function dayStats(dateStr) {
     var list = tasksForDate(dateStr);
     if (list.length === 0) return null;
-    var doneMap = state.completions[dateStr] || {};
-    var done = list.filter(function (t) { return !!doneMap[t.id]; }).length;
-    return { done: done, total: list.length, percent: Math.round((done / list.length) * 100) };
+    var totalWeight = 0, earned = 0, fullyDone = 0;
+    list.forEach(function (t) {
+      var w = getWeight(t);
+      var p = getProgress(dateStr, t.id);
+      totalWeight += w;
+      earned += w * (p / 100);
+      if (p === 100) fullyDone++;
+    });
+    return {
+      done: fullyDone,
+      total: list.length,
+      percent: totalWeight > 0 ? Math.round((earned / totalWeight) * 100) : 0
+    };
   }
   function toggleTask(taskId, dateStr) {
-    if (!state.completions[dateStr]) state.completions[dateStr] = {};
-    state.completions[dateStr][taskId] = !state.completions[dateStr][taskId];
+    var current = getProgress(dateStr, taskId);
+    setProgress(dateStr, taskId, current === 100 ? 0 : 100);
     save();
     render();
   }
-  function addTask(name, type, days) {
+  function addTask(name, type, days, weight) {
     name = name.trim();
     if (!name) return;
     if (type === "custom" && (!days || days.length === 0)) return;
@@ -275,6 +331,7 @@
       id: uid(),
       name: name,
       type: type,
+      weight: weight || 2,
       date: type === "onetime" ? todayStr : undefined,
       days: type === "custom" ? days.slice().sort() : undefined,
       createdAt: todayStr,
@@ -291,17 +348,19 @@
   function taskRate(taskId, days) {
     var task = state.tasks.filter(function (t) { return t.id === taskId; })[0];
     if (!task) return null;
-    var activeDays = 0, doneDays = 0;
+    var activeDays = 0, fullyDoneDays = 0, progressSum = 0;
     for (var i = 0; i < days; i++) {
       var d = fmt(addDays(today, -i));
       var isActive = isTaskActiveOn(task, d);
       if (isActive) {
         activeDays++;
-        if (state.completions[d] && state.completions[d][taskId]) doneDays++;
+        var p = getProgress(d, taskId);
+        progressSum += p;
+        if (p === 100) fullyDoneDays++;
       }
     }
     if (activeDays === 0) return null;
-    return { activeDays: activeDays, doneDays: doneDays, percent: Math.round((doneDays / activeDays) * 100) };
+    return { activeDays: activeDays, doneDays: fullyDoneDays, percent: Math.round(progressSum / activeDays) };
   }
   function recurringTasks() {
     return state.tasks.filter(function (t) { return t.type === "daily" || t.type === "custom"; });
@@ -347,25 +406,47 @@
   function renderToday() {
     var list = tasksForDate(todayStr);
     var stats = dayStats(todayStr);
-    var doneMap = state.completions[todayStr] || {};
     var html = '<div class="pane">';
     html += '<div class="date-line">' + niceDate(todayStr) + '</div>';
     html += '<div class="hero">' + ringSvg(stats ? stats.percent : null) +
-      '<div class="ring-sub">' + (stats ? stats.done + " of " + stats.total + " done" : "No tasks today") + '</div></div>';
+      '<div class="ring-sub">' + (stats ? stats.done + " of " + stats.total + " fully done" : "No tasks today") + '</div></div>';
     if (list.length === 0) {
       html += '<div class="empty">Nothing on the list yet. Tap + to add your first task.</div>';
     } else {
       html += '<ul class="list">';
       list.forEach(function (t) {
-        var checked = !!doneMap[t.id];
+        var p = getProgress(todayStr, t.id);
+        var full = p === 100;
+        var w = getWeight(t);
+        var freq = frequencyTag(t);
         html += '<li class="item">' +
-          '<button class="check' + (checked ? " on" : "") + '" data-toggle="' + t.id + '">' +
+          '<button class="check' + (full ? " on" : "") + '" data-toggle="' + t.id + '">' +
             '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M4 12l5 5L20 6" fill="none" stroke="#1B2320" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
           '</button>' +
-          '<span class="item-name' + (checked ? " done" : "") + '">' + escapeHtml(t.name) + '</span>' +
-          (frequencyTag(t) ? '<span class="item-tag">' + escapeHtml(frequencyTag(t)) + '</span>' : '') +
+          '<div class="item-body" data-expand="' + t.id + '">' +
+            '<div class="item-top">' +
+              '<span class="item-name' + (full ? " done" : "") + '">' + escapeHtml(t.name) + '</span>' +
+              '<span class="item-pct' + (full ? " full" : "") + '">' + p + '%</span>' +
+            '</div>' +
+            '<div class="mini-track"><div class="mini-fill" style="width:' + p + '%"></div></div>' +
+            '<div class="tag-row">' +
+              (w !== 2 ? '<span class="item-tag' + (w === 3 ? ' imp-high' : '') + '">' + weightLabel(w) + ' priority</span>' : '') +
+              (freq ? '<span class="item-tag">' + escapeHtml(freq) + '</span>' : '') +
+            '</div>' +
+          '</div>' +
           '<button class="remove" data-remove="' + t.id + '">×</button>' +
         '</li>';
+        if (expandedId === t.id) {
+          html += '<li class="slider-row">' +
+            '<input type="range" min="0" max="100" step="5" value="' + p + '" id="slider-' + t.id + '" data-slider="' + t.id + '"/>' +
+            '<div class="slider-quick">' +
+              '<button data-quick="' + t.id + '" data-val="25">25%</button>' +
+              '<button data-quick="' + t.id + '" data-val="50">50%</button>' +
+              '<button data-quick="' + t.id + '" data-val="75">75%</button>' +
+              '<button data-quick="' + t.id + '" data-val="100">100%</button>' +
+            '</div>' +
+          '</li>';
+        }
       });
       html += '</ul>';
     }
@@ -445,8 +526,11 @@
         var week = taskRate(t.id, 7);
         var month = taskRate(t.id, 30);
         var freqTag = frequencyTag(t);
+        var w = getWeight(t);
         html += '<li class="manage-item">' +
-          '<div class="manage-top"><span>' + escapeHtml(t.name) + (freqTag ? ' <span class="item-tag">' + escapeHtml(freqTag) + '</span>' : '') + '</span>' +
+          '<div class="manage-top"><span>' + escapeHtml(t.name) +
+            (w !== 2 ? ' <span class="item-tag' + (w === 3 ? ' imp-high' : '') + '">' + weightLabel(w) + '</span>' : '') +
+            (freqTag ? ' <span class="item-tag">' + escapeHtml(freqTag) + '</span>' : '') + '</span>' +
           '<button class="remove" data-remove="' + t.id + '">×</button></div>' +
           '<div class="manage-stats"><span>Week: ' + (week ? week.percent + "%" : "–") + '</span><span>Month: ' + (month ? month.percent + "%" : "–") + '</span></div>' +
         '</li>';
@@ -479,6 +563,59 @@
         removeTask(el.getAttribute("data-remove"));
       });
     });
+    main.querySelectorAll("[data-expand]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var id = el.getAttribute("data-expand");
+        expandedId = expandedId === id ? null : id;
+        render();
+      });
+    });
+    main.querySelectorAll("[data-slider]").forEach(function (el) {
+      el.addEventListener("input", function () {
+        var id = el.getAttribute("data-slider");
+        var val = parseInt(el.value, 10);
+        liveUpdateProgress(id, val);
+      });
+      el.addEventListener("change", function () {
+        var id = el.getAttribute("data-slider");
+        var val = parseInt(el.value, 10);
+        setProgress(todayStr, id, val);
+        save();
+        render();
+      });
+    });
+    main.querySelectorAll("[data-quick]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var id = el.getAttribute("data-quick");
+        var val = parseInt(el.getAttribute("data-val"), 10);
+        setProgress(todayStr, id, val);
+        save();
+        render();
+      });
+    });
+  }
+
+  // updates the on-screen numbers live while dragging, without a full re-render
+  // (a full re-render would recreate the slider mid-drag and interrupt it)
+  function liveUpdateProgress(taskId, val) {
+    setProgress(todayStr, taskId, val);
+    var item = document.querySelector('[data-expand="' + taskId + '"]');
+    if (item) {
+      var pctEl = item.querySelector(".item-pct");
+      var fillEl = item.querySelector(".mini-fill");
+      if (pctEl) { pctEl.textContent = val + "%"; pctEl.classList.toggle("full", val === 100); }
+      if (fillEl) fillEl.style.width = val + "%";
+    }
+    var stats = dayStats(todayStr);
+    var ringNum = document.querySelector(".ring-num");
+    var ringSub = document.querySelector(".ring-sub");
+    if (ringNum && stats) ringNum.textContent = stats.percent + "%";
+    if (ringSub && stats) ringSub.textContent = stats.done + " of " + stats.total + " fully done";
+    var ringCircle = document.querySelector(".ring-wrap svg circle:nth-child(2)");
+    if (ringCircle && stats) {
+      var r = 50, c = 2 * Math.PI * r;
+      ringCircle.setAttribute("stroke-dashoffset", c * (1 - stats.percent / 100));
+    }
   }
 
   // ---------- wiring ----------
@@ -498,6 +635,18 @@
   };
   var newType = "daily";
   var customDays = [];
+  var newWeight = 2;
+  var impChips = {
+    1: document.getElementById("impLow"),
+    2: document.getElementById("impMed"),
+    3: document.getElementById("impHigh")
+  };
+  Object.keys(impChips).forEach(function (w) {
+    impChips[w].addEventListener("click", function () {
+      newWeight = parseInt(w, 10);
+      Object.keys(impChips).forEach(function (k) { impChips[k].classList.toggle("on", k === w); });
+    });
+  });
 
   function setType(type) {
     newType = type;
@@ -511,6 +660,8 @@
     customDays = [];
     document.querySelectorAll(".daychip").forEach(function (el) { el.classList.remove("on"); });
     setType("daily");
+    newWeight = 2;
+    Object.keys(impChips).forEach(function (k) { impChips[k].classList.toggle("on", k === "2"); });
   }
   function trySubmit() {
     if (newType === "custom" && customDays.length === 0) {
@@ -520,7 +671,7 @@
       setTimeout(function () { daysRow.style.outline = "none"; }, 900);
       return;
     }
-    addTask(document.getElementById("newName").value, newType, customDays);
+    addTask(document.getElementById("newName").value, newType, customDays, newWeight);
     overlay.classList.remove("show");
   }
 
