@@ -167,60 +167,108 @@
   .btn-ghost, .btn { flex: 1; padding: 12px 0; border-radius: 10px; font-size: 14px; border: none; cursor: pointer; }
   .btn-ghost { background: transparent; color: var(--text2); }
   .btn { background: var(--accent); color: #1B2320; font-weight: 600; }
+
+  /* auth */
+  #authScreen { display:flex; flex-direction:column; justify-content:center; height:100%; padding:24px; }
+  #authScreen h1 { font-size:26px; text-align:center; margin:0 0 6px; }
+  #authScreen .sub { text-align:center; color:var(--text2); font-size:14px; margin-bottom:24px; }
+  #authScreen .btn, #authScreen .btn-ghost { width:100%; flex:none; margin-top:6px; }
+  #googleBtn { background:var(--surface2); color:var(--text); margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .auth-error { font-size:13px; text-align:center; margin-top:8px; min-height:16px; color:var(--warn); }
+  #logoutBtn { background:none; border:none; color:var(--text2); font-size:12px; cursor:pointer; padding:6px; }
 </style>
 </head>
 <body>
 <div id="root">
-  <header>
-    <h1 class="serif">Daybook</h1>
-  </header>
-  <main id="main"></main>
 
-  <div class="overlay" id="overlay">
-    <div class="sheet">
-      <h2 class="serif">New task</h2>
-      <input class="input" id="newName" placeholder="What do you want to track?" />
-      <div class="type-row">
-        <button class="chip on" id="chipDaily">Every day</button>
-        <button class="chip" id="chipCustom">Some days</button>
-        <button class="chip" id="chipOnce">Just today</button>
-      </div>
-      <div class="days-row" id="daysRow" style="display:none">
-        <button class="daychip" data-day="0">Su</button>
-        <button class="daychip" data-day="1">Mo</button>
-        <button class="daychip" data-day="2">Tu</button>
-        <button class="daychip" data-day="3">We</button>
-        <button class="daychip" data-day="4">Th</button>
-        <button class="daychip" data-day="5">Fr</button>
-        <button class="daychip" data-day="6">Sa</button>
-      </div>
-      <div style="font-size:12px;color:var(--text2);margin:2px 0 8px;">How important is this task?</div>
-      <div class="type-row" id="impRow">
-        <button class="chip" id="impLow" data-weight="1">Low</button>
-        <button class="chip on" id="impMed" data-weight="2">Medium</button>
-        <button class="chip" id="impHigh" data-weight="3">High</button>
-      </div>
-      <div class="sheet-actions">
-        <button class="btn-ghost" id="cancelAdd">Cancel</button>
-        <button class="btn" id="confirmAdd">Add task</button>
-      </div>
-    </div>
+  <div id="authScreen">
+    <h1 class="serif">Daybook</h1>
+    <div class="sub">Sign in to sync your tasks across devices</div>
+    <button class="btn" id="googleBtn">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.5-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4 16 4 9 8.5 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.3 0 10.2-2 13.9-5.3l-6.4-5.4C29.4 35 26.8 36 24 36c-5.3 0-9.8-3.4-11.4-8.1l-6.5 5C9 39.4 16 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.4 5.4C40.9 36.4 44 30.7 44 24c0-1.4-.1-2.5-.4-3.5z"/></svg>
+      Continue with Google
+    </button>
+    <div style="text-align:center; color:var(--text2); font-size:12px; margin-bottom:14px;">or use email</div>
+    <input class="input" id="authEmail" type="email" placeholder="Email" autocomplete="email" />
+    <input class="input" id="authPassword" type="password" placeholder="Password" autocomplete="current-password" />
+    <button class="btn" id="authSubmit">Log in</button>
+    <button class="btn-ghost" id="authToggle">Don't have an account? Sign up</button>
+    <button class="btn-ghost" id="forgotBtn">Forgot password?</button>
+    <div class="auth-error" id="authError"></div>
   </div>
 
-  <button class="fab" id="fab">+</button>
+  <div id="appScreen" style="display:none; flex-direction:column; height:100%;">
+    <header>
+      <h1 class="serif">Daybook</h1>
+      <button id="logoutBtn">Log out</button>
+    </header>
+    <main id="main"></main>
 
-  <nav class="tabs">
-    <button class="tab on" data-tab="today">Today</button>
-    <button class="tab" data-tab="week">Week</button>
-    <button class="tab" data-tab="month">Month</button>
-    <button class="tab" data-tab="tasks">Tasks</button>
-  </nav>
+    <div class="overlay" id="overlay">
+      <div class="sheet">
+        <h2 class="serif">New task</h2>
+        <input class="input" id="newName" placeholder="What do you want to track?" />
+        <div class="type-row">
+          <button class="chip on" id="chipDaily">Every day</button>
+          <button class="chip" id="chipCustom">Some days</button>
+          <button class="chip" id="chipOnce">Just today</button>
+        </div>
+        <div class="days-row" id="daysRow" style="display:none">
+          <button class="daychip" data-day="0">Su</button>
+          <button class="daychip" data-day="1">Mo</button>
+          <button class="daychip" data-day="2">Tu</button>
+          <button class="daychip" data-day="3">We</button>
+          <button class="daychip" data-day="4">Th</button>
+          <button class="daychip" data-day="5">Fr</button>
+          <button class="daychip" data-day="6">Sa</button>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin:2px 0 8px;">How important is this task?</div>
+        <div class="type-row" id="impRow">
+          <button class="chip" id="impLow" data-weight="1">Low</button>
+          <button class="chip on" id="impMed" data-weight="2">Medium</button>
+          <button class="chip" id="impHigh" data-weight="3">High</button>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn-ghost" id="cancelAdd">Cancel</button>
+          <button class="btn" id="confirmAdd">Add task</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="fab" id="fab">+</button>
+
+    <nav class="tabs">
+      <button class="tab on" data-tab="today">Today</button>
+      <button class="tab" data-tab="week">Week</button>
+      <button class="tab" data-tab="month">Month</button>
+      <button class="tab" data-tab="tasks">Tasks</button>
+    </nav>
+  </div>
+
 </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 
 <script>
 (function () {
   "use strict";
-  var STORAGE_KEY = "daybook-data-v1";
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyBsSehFvU33Lq35WBw_H6QpEOFeYQOmoiM",
+    authDomain: "my-library-2749c.firebaseapp.com",
+    projectId: "my-library-2749c",
+    storageBucket: "my-library-2749c.firebasestorage.app",
+    messagingSenderId: "936698152438",
+    appId: "1:936698152438:web:8a932dc91bd5897b11f3d7"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+  var currentUser = null;
+  var unsubData = null;
+  var loaded = false;
 
   // ---------- date helpers ----------
   function fmt(d) {
@@ -249,6 +297,7 @@
     div.textContent = s;
     return div.innerHTML;
   }
+  function $(id) { return document.getElementById(id); }
 
   // ---------- state ----------
   var state = { tasks: [], completions: {} };
@@ -257,20 +306,95 @@
   var today = new Date();
   var todayStr = fmt(today);
 
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) state = JSON.parse(raw);
-    } catch (e) {
-      console.error("Couldn't load saved data", e);
+  // ---------- auth ----------
+  var isSignup = false;
+  $("authToggle").addEventListener("click", function () {
+    isSignup = !isSignup;
+    $("authSubmit").textContent = isSignup ? "Sign up" : "Log in";
+    $("authToggle").textContent = isSignup ? "Already have an account? Log in" : "Don't have an account? Sign up";
+    $("authError").textContent = "";
+  });
+  $("googleBtn").addEventListener("click", function () {
+    $("authError").textContent = "";
+    auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()).catch(function (err) {
+      $("authError").style.color = "var(--warn)";
+      $("authError").textContent = friendlyAuthError(err);
+    });
+  });
+  auth.getRedirectResult().catch(function (err) {
+    if (err && err.code && err.code !== "auth/no-auth-event") {
+      $("authError").style.color = "var(--warn)";
+      $("authError").textContent = friendlyAuthError(err);
     }
+  });
+  $("authSubmit").addEventListener("click", function () {
+    var email = $("authEmail").value.trim();
+    var pass = $("authPassword").value;
+    $("authError").textContent = "";
+    if (!email || !pass) { $("authError").textContent = "Enter your email and password."; return; }
+    var action = isSignup
+      ? auth.createUserWithEmailAndPassword(email, pass)
+      : auth.signInWithEmailAndPassword(email, pass);
+    action.catch(function (err) {
+      $("authError").style.color = "var(--warn)";
+      $("authError").textContent = friendlyAuthError(err);
+    });
+  });
+  $("forgotBtn").addEventListener("click", function () {
+    var email = $("authEmail").value.trim();
+    if (!email) { $("authError").textContent = "Type your email above first, then tap this again."; return; }
+    auth.sendPasswordResetEmail(email).then(function () {
+      $("authError").style.color = "var(--accent)";
+      $("authError").textContent = "Reset link sent — check your email.";
+    }).catch(function (err) {
+      $("authError").style.color = "var(--warn)";
+      $("authError").textContent = friendlyAuthError(err);
+    });
+  });
+  $("logoutBtn").addEventListener("click", function () { auth.signOut(); });
+
+  function friendlyAuthError(err) {
+    var code = err && err.code;
+    if (code === "auth/email-already-in-use") return "That email already has an account — try logging in.";
+    if (code === "auth/weak-password") return "Password should be at least 6 characters.";
+    if (code === "auth/invalid-email") return "That email address doesn't look right.";
+    if (code === "auth/wrong-password" || code === "auth/invalid-credential") return "Incorrect email or password.";
+    if (code === "auth/user-not-found") return "No account found with that email.";
+    return err && err.message ? err.message : "Something went wrong.";
+  }
+
+  auth.onAuthStateChanged(function (user) {
+    currentUser = user;
+    if (user) {
+      $("authScreen").style.display = "none";
+      $("appScreen").style.display = "flex";
+      subscribeData();
+    } else {
+      $("appScreen").style.display = "none";
+      $("authScreen").style.display = "flex";
+      if (unsubData) { unsubData(); unsubData = null; }
+      loaded = false;
+      state = { tasks: [], completions: {} };
+    }
+  });
+
+  function dataRef() {
+    return db.collection("users").doc(currentUser.uid).collection("daybook").doc("data");
+  }
+  function subscribeData() {
+    if (unsubData) unsubData();
+    unsubData = dataRef().onSnapshot(function (doc) {
+      var d = doc.data();
+      state = { tasks: (d && d.tasks) || [], completions: (d && d.completions) || {} };
+      loaded = true;
+      render();
+    }, function (err) {
+      $("main").innerHTML = '<div class="loading-msg" style="color:var(--text2);text-align:center;padding:60px 20px;">Couldn\'t load your tasks: ' + escapeHtml(err.message) + '</div>';
+    });
   }
   function save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error("Couldn't save data", e);
-    }
+    dataRef().set({ tasks: state.tasks, completions: state.completions }, { merge: false })
+      .catch(function (err) { console.error("Couldn't save data", err); });
   }
 
   // ---------- core logic ----------
@@ -703,9 +827,6 @@
   document.getElementById("newName").addEventListener("keydown", function (e) {
     if (e.key === "Enter") trySubmit();
   });
-
-  load();
-  render();
 })();
 </script>
 </body>
