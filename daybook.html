@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#1B2320" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" type="image/png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<title>Daybook</title>
+<style>
+  :root {
+    --bg: #1B2320;
+    --surface: #232E29;
+    --surface2: #2E3A34;
+    --text: #E8E6DE;
+    --text2: #9AA69C;
+    --accent: #D4A24C;
+    --accent-dim: #8C7038;
+    --warn: #C1666B;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior-y: none;
+  }
+  .serif { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; }
+  #root {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--bg);
+  }
+  header {
+    padding: 20px 20px 8px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 20px 100px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pane { padding-top: 8px; }
+  .date-line { font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+  .hero { display: flex; justify-content: center; padding: 12px 0 36px; position: relative; }
+  .ring-wrap { position: relative; width: 140px; height: 140px; }
+  .ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .ring-num { font-size: 30px; font-weight: 600; }
+  .ring-sub {
+    position: absolute; bottom: -26px; left: 0; right: 0;
+    text-align: center; font-size: 13px; color: var(--text2);
+  }
+  .empty { text-align: center; color: var(--text2); font-size: 14px; padding: 40px 20px; line-height: 1.5; }
+  ul.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 4px; border-bottom: 1px solid var(--surface2);
+  }
+  .check {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid var(--accent-dim); background: transparent;
+    flex-shrink: 0; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;
+    margin-top: 2px;
+  }
+  .check.on { background: var(--accent); border-color: var(--accent); }
+  .check svg { display: none; }
+  .check.on svg { display: block; }
+  .item-body { flex: 1; min-width: 0; cursor: pointer; }
+  .item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .item-name { font-size: 15px; }
+  .item-name.done { color: var(--text2); text-decoration: line-through; }
+  .item-pct { font-size: 12.5px; color: var(--text2); flex-shrink: 0; }
+  .item-pct.full { color: var(--accent); font-weight: 600; }
+  .mini-track { height: 4px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .mini-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .tag-row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .item-tag { font-size: 11px; color: var(--text2); background: var(--surface2); padding: 3px 8px; border-radius: 20px; }
+  .item-tag.imp-high { color: var(--accent); }
+  .slider-row { padding: 2px 4px 14px 40px; border-bottom: 1px solid var(--surface2); }
+  .slider-row input[type="range"] {
+    width: 100%; height: 30px; -webkit-appearance: none; background: transparent; margin: 0;
+  }
+  .slider-row input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px; background: var(--surface2); border-radius: 3px;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); margin-top: -8px; border: none;
+  }
+  .slider-quick { display: flex; gap: 6px; margin-top: 8px; }
+  .slider-quick button {
+    flex: 1; padding: 7px 0; border-radius: 8px; border: 1px solid var(--surface2);
+    background: transparent; color: var(--text2); font-size: 12px; cursor: pointer;
+  }
+  .remove { background: none; border: none; color: var(--text2); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 6px; flex-shrink: 0; align-self: flex-start; }
+  .section-title { font-size: 13px; color: var(--text2); margin: 18px 0 10px; }
+  .avg-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; }
+  .avg-num { font-size: 32px; font-weight: 600; }
+  .avg-label { font-size: 13px; color: var(--text2); }
+  .bars { display: flex; gap: 10px; align-items: flex-end; height: 140px; padding: 0 4px 12px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+  .bar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; background: var(--surface); border-radius: 6px; overflow: hidden; }
+  .bar-fill { width: 100%; background: var(--accent); border-radius: 6px 6px 0 0; transition: height 0.3s ease; }
+  .bar-label { margin-top: 8px; font-size: 12px; color: var(--text2); }
+  .heat { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin-bottom: 8px; }
+  .heat-cell { aspect-ratio: 1; border-radius: 3px; background: var(--surface2); }
+  ul.rate-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .rate-item { display: flex; align-items: center; gap: 10px; }
+  .rate-name { font-size: 13px; width: 92px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rate-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .rate-fill { height: 100%; background: var(--warn); }
+  .rate-pct { font-size: 12px; color: var(--text2); width: 34px; text-align: right; }
+  ul.manage-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .manage-item { padding: 14px 4px; border-bottom: 1px solid var(--surface2); }
+  .manage-top { display: flex; align-items: center; justify-content: space-between; }
+  .manage-stats { display: flex; gap: 16px; margin-top: 6px; font-size: 12px; color: var(--text2); }
+  nav.tabs {
+    display: flex; border-top: 1px solid var(--surface2); background: var(--bg);
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); flex-shrink: 0;
+  }
+  .tab { flex: 1; background: none; border: none; color: var(--text2); font-size: 13px; padding: 10px 0; cursor: pointer; border-radius: 10px; }
+  .tab.on { color: var(--accent); background: var(--surface); }
+  .fab {
+    position: absolute; right: 20px; bottom: 74px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--accent); color: #1B2320; font-size: 26px; border: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35); cursor: pointer; line-height: 1;
+  }
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: flex-end; z-index: 10; }
+  .overlay.show { display: flex; }
+  .sheet { width: 100%; background: var(--surface); border-radius: 18px 18px 0 0; padding: 22px 20px calc(22px + env(safe-area-inset-bottom, 0px)); }
+  .sheet h2 { font-size: 19px; margin: 0 0 14px; }
+  .input { width: 100%; background: var(--surface2); border: none; border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 15px; margin-bottom: 14px; }
+  .input:focus { outline: 2px solid var(--accent); }
+  .type-row { display: flex; gap: 8px; margin-bottom: 18px; }
+  .chip { flex: 1; padding: 10px 0; border-radius: 10px; border: 1px solid var(--surface2); background: transparent; color: var(--text2); font-size: 13px; cursor: pointer; }
+  .chip.on { border-color: var(--accent); color: var(--accent); }
+  .days-row { display: flex; gap: 6px; margin: -8px 0 18px; }
+  .daychip {
+    flex: 1; padding: 9px 0; border-radius: 8px; border: 1px solid var(--surface2);
+    background: transparent; color: var(--text2); font-size: 12px; cursor: pointer;
+  }
+  .daychip.on { border-color: var(--accent); color: var(--accent); background: rgba(212,162,76,0.12); }
+  .sheet-actions { display: flex; gap: 10px; }
+  .btn-ghost, .btn { flex: 1; padding: 12px 0; border-radius: 10px; font-size: 14px; border: none; cursor: pointer; }
+  .btn-ghost { background: transparent; color: var(--text2); }
+  .btn { background: var(--accent); color: #1B2320; font-weight: 600; }
+
+  /* auth */
+  #authScreen { display:flex; flex-direction:column; justify-content:center; height:100%; padding:24px; }
+  #authScreen h1 { font-size:26px; text-align:center; margin:0 0 6px; }
+  #authScreen .sub { text-align:center; color:var(--text2); font-size:14px; margin-bottom:24px; }
+  #authScreen .btn, #authScreen .btn-ghost { width:100%; flex:none; margin-top:6px; }
+  #googleBtn { background:var(--surface2); color:var(--text); margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .auth-error { font-size:13px; text-align:center; margin-top:8px; min-height:16px; color:var(--warn); }
+  #logoutBtn { background:none; border:none; color:var(--text2); font-size:12px; cursor:pointer; padding:6px; }
+</style>
+</head>
+<body>
+<div id="root">
+
+  <div id="authScreen">
+    <h1 class="serif">Daybook</h1>
+    <div class="sub">Sign in to sync your tasks across devices</div>
+    <button class="btn" id="googleBtn">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.9 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.5-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 6.1 29.5 4 24 4 16 4 9 8.5 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.3 0 10.2-2 13.9-5.3l-6.4-5.4C29.4 35 26.8 36 24 36c-5.3 0-9.8-3.4-11.4-8.1l-6.5 5C9 39.4 16 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.4 5.4C40.9 36.4 44 30.7 44 24c0-1.4-.1-2.5-.4-3.5z"/></svg>
+      Continue with Google
+    </button>
+    <div style="text-align:center; color:var(--text2); font-size:12px; margin-bottom:14px;">or use email</div>
+    <input class="input" id="authEmail" type="email" placeholder="Email" autocomplete="email" />
+    <input class="input" id="authPassword" type="password" placeholder="Password" autocomplete="current-password" />
+    <button class="btn" id="authSubmit">Log in</button>
+    <button class="btn-ghost" id="authToggle">Don't have an account? Sign up</button>
+    <button class="btn-ghost" id="forgotBtn">Forgot password?</button>
+    <div class="auth-error" id="authError"></div>
+  </div>
+
+  <div id="appScreen" style="display:none; flex-direction:column; height:100%;">
+    <header>
+      <h1 class="serif">Daybook</h1>
+      <button id="logoutBtn">Log out</button>
+    </header>
+    <main id="main"></main>
+
+    <div class="overlay" id="overlay">
+      <div class="sheet">
+        <h2 class="serif">New task</h2>
+        <input class="input" id="newName" placeholder="What do you want to track?" />
+        <div class="type-row">
+          <button class="chip on" id="chipDaily">Every day</button>
+          <button class="chip" id="chipCustom">Some days</button>
+          <button class="chip" id="chipOnce">Just today</button>
+        </div>
+        <div class="days-row" id="daysRow" style="display:none">
+          <button class="daychip" data-day="0">Su</button>
+          <button class="daychip" data-day="1">Mo</button>
+          <button class="daychip" data-day="2">Tu</button>
+          <button class="daychip" data-day="3">We</button>
+          <button class="daychip" data-day="4">Th</button>
+          <button class="daychip" data-day="5">Fr</button>
+          <button class="daychip" data-day="6">Sa</button>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin:2px 0 8px;">How important is this task?</div>
+        <div class="type-row" id="impRow">
+          <button class="chip" id="impLow" data-weight="1">Low</button>
+          <button class="chip on" id="impMed" data-weight="2">Medium</button>
+          <button class="chip" id="impHigh" data-weight="3">High</button>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn-ghost" id="cancelAdd">Cancel</button>
+          <button class="btn" id="confirmAdd">Add task</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="fab" id="fab">+</button>
+
+    <nav class="tabs">
+      <button class="tab on" data-tab="today">Today</button>
+      <button class="tab" data-tab="week">Week</button>
+      <button class="tab" data-tab="month">Month</button>
+      <button class="tab" data-tab="tasks">Tasks</button>
+    </nav>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyBsSehFvU33Lq35WBw_H6QpEOFeYQOmoiM",
+    authDomain: "my-library-2749c.firebaseapp.com",
+    projectId: "my-library-2749c",
+    storageBucket: "my-library-2749c.firebasestorage.app",
+    messagingSenderId: "936698152438",
+    appId: "1:936698152438:web:8a932dc91bd5897b11f3d7"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var auth = firebase.auth();
+  var db = firebase.firestore();
+  var currentUser = null;
+  var unsubData = null;
+  var loaded = false;
+
+  // ---------- date helpers ----------
+  function fmt(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+  function addDays(d, n) {
+    var nd = new Date(d);
+    nd.setDate(nd.getDate() + n);
+    return nd;
+  }
+  function dayLabel(d) {
+    return ["S", "M", "T", "W", "T", "F", "S"][d.getDay()];
+  }
+  function niceDate(dateStr) {
+    var d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  }
+  function uid() {
+    return (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2)) + Date.now().toString(36);
+  }
+  function escapeHtml(s) {
+    var div = document.createElement("div");
+    div.textContent = s;
+    return div.innerHTML;
+  }
+  function $(id) { return document.getElementById(id); }
+
+  // ---------- state ----------
+  var state = { tasks: [], completions: {} };
+  var tab = "today";
+  var expandedId = null;
+  var today = new Date();
+  var todayStr = fmt(today);
+
+  // ---------- auth ----------
+  var isSignup = false;
+  $("authToggle").addEventListener("click", function () {
+    isSignup = !isSignup;
+    $("authSubmit").textContent = isSignup ? "Sign up" : "Log in";
+    $("authToggle").textContent = isSignup ? "Already have an account? Log in" : "Don't have an account? Sign up";
+    $("authError").textContent = "";
+  });
+  $("googleBtn").addEventListener("click", function () {
+    $("authError").textContent = "";
+    auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()).catch(function (err) {
+      $("authError").style.color = "var(--warn)";
+      $("authError").textContent = friendlyAuthError(err);
+    });
+  });
+  auth.getRedirectResult().catch(function (err) {
+    if (err && err.code && err.code !== "auth/no-auth-event") {
+      $("authError").style.color = "var(--warn)";
+      $("authError").textContent = friendlyAuthError(err);
+    }
+  });
+  $("authSubmit").addEventListener("click", function () {
+    var email = $("authEmail").value.trim();
+    var pass = $("authPassword").value;
+    $("authError").textContent = "";
+    if (!email || !pass) { $("authError").textContent = "Enter your email and password."; return; }
+    var action = isSignup
+      ? auth.createUserWithEmailAndPassword(email, pass)
+      : auth.signInWithEmailAndPassword(email, pass);
+    action.catch(function (err) {
+      $("authError").style.color = "var(--warn)";
+      $("authError").textContent = friendlyAuthError(err);
+    });
+  });
+  $("forgotBtn").addEventListener("click", function () {
+    var email = $("authEmail").value.trim();
+    if (!email) { $("authError").textContent = "Type your email above first, then tap this again."; return; }
+    auth.sendPasswordResetEmail(email).then(function () {
+      $("authError").style.color = "var(--accent)";
+      $("authError").textContent = "Reset link sent — check your email.";
+    }).catch(function (err) {
+      $("authError").style.color = "var(--warn)";
+      $("authError").textContent = friendlyAuthError(err);
+    });
+  });
+  $("logoutBtn").addEventListener("click", function () { auth.signOut(); });
+
+  function friendlyAuthError(err) {
+    var code = err && err.code;
+    if (code === "auth/email-already-in-use") return "That email already has an account — try logging in.";
+    if (code === "auth/weak-password") return "Password should be at least 6 characters.";
+    if (code === "auth/invalid-email") return "That email address doesn't look right.";
+    if (code === "auth/wrong-password" || code === "auth/invalid-credential") return "Incorrect email or password.";
+    if (code === "auth/user-not-found") return "No account found with that email.";
+    return err && err.message ? err.message : "Something went wrong.";
+  }
+
+  auth.onAuthStateChanged(function (user) {
+    currentUser = user;
+    if (user) {
+      $("authScreen").style.display = "none";
+      $("appScreen").style.display = "flex";
+      subscribeData();
+    } else {
+      $("appScreen").style.display = "none";
+      $("authScreen").style.display = "flex";
+      if (unsubData) { unsubData(); unsubData = null; }
+      loaded = false;
+      state = { tasks: [], completions: {} };
+    }
+  });
+
+  function dataRef() {
+    return db.collection("users").doc(currentUser.uid).collection("daybook").doc("data");
+  }
+  function subscribeData() {
+    if (unsubData) unsubData();
+    unsubData = dataRef().onSnapshot(function (doc) {
+      var d = doc.data();
+      state = { tasks: (d && d.tasks) || [], completions: (d && d.completions) || {} };
+      loaded = true;
+      render();
+    }, function (err) {
+      $("main").innerHTML = '<div class="loading-msg" style="color:var(--text2);text-align:center;padding:60px 20px;">Couldn\'t load your tasks: ' + escapeHtml(err.message) + '</div>';
+    });
+  }
+  function save() {
+    dataRef().set({ tasks: state.tasks, completions: state.completions }, { merge: false })
+      .catch(function (err) {
+        console.error("Couldn't save data", err);
+        alert("Couldn't save: " + err.message + "\n\nYour change may not have been kept — please check your connection and try again.");
+      });
+  }
+
+  // ---------- core logic ----------
+  function getWeight(t) { return t.weight || 2; }
+  function weightLabel(w) { return w === 1 ? "Low" : w === 3 ? "High" : "Medium"; }
+  function getProgress(dateStr, taskId) {
+    var day = state.completions[dateStr];
+    if (!day || !(taskId in day)) return 0;
+    var v = day[taskId];
+    if (v === true) return 100;
+    if (v === false || v == null) return 0;
+    return Math.max(0, Math.min(100, Number(v) || 0));
+  }
+  function setProgress(dateStr, taskId, value) {
+    if (!state.completions[dateStr]) state.completions[dateStr] = {};
+    state.completions[dateStr][taskId] = Math.max(0, Math.min(100, Math.round(value)));
+  }
+  function dayOfWeek(dateStr) {
+    return new Date(dateStr + "T00:00:00").getDay();
+  }
+  function isTaskActiveOn(t, dateStr) {
+    if (t.active === false) return false;
+    if (t.type === "onetime") return t.date === dateStr;
+    if (t.type === "custom") return t.createdAt <= dateStr && (t.days || []).indexOf(dayOfWeek(dateStr)) !== -1;
+    return t.createdAt <= dateStr;
+  }
+  function tasksForDate(dateStr) {
+    return state.tasks.filter(function (t) { return isTaskActiveOn(t, dateStr); });
+  }
+  function dayStats(dateStr) {
+    var list = tasksForDate(dateStr);
+    if (list.length === 0) return null;
+    var totalWeight = 0, earned = 0, fullyDone = 0;
+    list.forEach(function (t) {
+      var w = getWeight(t);
+      var p = getProgress(dateStr, t.id);
+      totalWeight += w;
+      earned += w * (p / 100);
+      if (p === 100) fullyDone++;
+    });
+    return {
+      done: fullyDone,
+      total: list.length,
+      percent: totalWeight > 0 ? Math.round((earned / totalWeight) * 100) : 0
+    };
+  }
+  function toggleTask(taskId, dateStr) {
+    var current = getProgress(dateStr, taskId);
+    setProgress(dateStr, taskId, current === 100 ? 0 : 100);
+    save();
+    render();
+  }
+  function addTask(name, type, days, weight) {
+    name = name.trim();
+    if (!name) return;
+    if (type === "custom" && (!days || days.length === 0)) return;
+    state.tasks.push({
+      id: uid(),
+      name: name,
+      type: type,
+      weight: weight || 2,
+      date: type === "onetime" ? todayStr : undefined,
+      days: type === "custom" ? days.slice().sort() : undefined,
+      createdAt: todayStr,
+      active: true
+    });
+    save();
+    render();
+  }
+  function removeTask(id) {
+    state.tasks = state.tasks.filter(function (t) { return t.id !== id; });
+    save();
+    render();
+  }
+  function taskRate(taskId, days) {
+    var task = state.tasks.filter(function (t) { return t.id === taskId; })[0];
+    if (!task) return null;
+    var activeDays = 0, fullyDoneDays = 0, progressSum = 0;
+    for (var i = 0; i < days; i++) {
+      var d = fmt(addDays(today, -i));
+      var isActive = isTaskActiveOn(task, d);
+      if (isActive) {
+        activeDays++;
+        var p = getProgress(d, taskId);
+        progressSum += p;
+        if (p === 100) fullyDoneDays++;
+      }
+    }
+    if (activeDays === 0) return null;
+    return { activeDays: activeDays, doneDays: fullyDoneDays, percent: Math.round(progressSum / activeDays) };
+  }
+  function recurringTasks() {
+    return state.tasks.filter(function (t) { return t.type === "daily" || t.type === "custom"; });
+  }
+  function dayNameShort(n) {
+    return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][n];
+  }
+  function frequencyTag(t) {
+    if (t.type === "onetime") return "today only";
+    if (t.type === "custom") return (t.days || []).map(dayNameShort).join(", ");
+    return null;
+  }
+  function leastDone() {
+    return recurringTasks()
+      .map(function (t) { return { task: t, stats: taskRate(t.id, 30) }; })
+      .filter(function (x) { return x.stats && x.stats.activeDays >= 3; })
+      .sort(function (a, b) { return a.stats.percent - b.stats.percent; })
+      .slice(0, 5);
+  }
+  function rangeAvg(days) {
+    var vals = days.map(dayStats).filter(Boolean);
+    if (vals.length === 0) return null;
+    return Math.round(vals.reduce(function (a, b) { return a + b.percent; }, 0) / vals.length);
+  }
+
+  // ---------- rendering ----------
+  function ringSvg(percent, id) {
+    var r = 50, c = 2 * Math.PI * r;
+    var off = c * (1 - (percent || 0) / 100);
+    return (
+      '<div class="ring-wrap">' +
+        '<svg viewBox="0 0 120 120" width="140" height="140">' +
+          '<circle cx="60" cy="60" r="' + r + '" fill="none" stroke="var(--surface2)" stroke-width="10"/>' +
+          '<circle cx="60" cy="60" r="' + r + '" fill="none" stroke="var(--accent)" stroke-width="10" ' +
+            'stroke-dasharray="' + c + '" stroke-dashoffset="' + off + '" stroke-linecap="round" ' +
+            'transform="rotate(-90 60 60)" style="transition: stroke-dashoffset 0.4s ease"/>' +
+        '</svg>' +
+        '<div class="ring-center"><div class="ring-num serif">' + (percent === null ? "–" : percent + "%") + '</div></div>' +
+      '</div>'
+    );
+  }
+
+  function renderToday() {
+    var list = tasksForDate(todayStr);
+    var stats = dayStats(todayStr);
+    var html = '<div class="pane">';
+    html += '<div class="date-line">' + niceDate(todayStr) + '</div>';
+    html += '<div class="hero">' + ringSvg(stats ? stats.percent : null) +
+      '<div class="ring-sub">' + (stats ? stats.done + " of " + stats.total + " fully done" : "No tasks today") + '</div></div>';
+    if (list.length === 0) {
+      html += '<div class="empty">Nothing on the list yet. Tap + to add your first task.</div>';
+    } else {
+      html += '<ul class="list">';
+      list.forEach(function (t) {
+        var p = getProgress(todayStr, t.id);
+        var full = p === 100;
+        var w = getWeight(t);
+        var freq = frequencyTag(t);
+        html += '<li class="item">' +
+          '<button class="check' + (full ? " on" : "") + '" data-toggle="' + t.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M4 12l5 5L20 6" fill="none" stroke="#1B2320" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          '</button>' +
+          '<div class="item-body" data-expand="' + t.id + '">' +
+            '<div class="item-top">' +
+              '<span class="item-name' + (full ? " done" : "") + '">' + escapeHtml(t.name) + '</span>' +
+              '<span class="item-pct' + (full ? " full" : "") + '">' + p + '%</span>' +
+            '</div>' +
+            '<div class="mini-track"><div class="mini-fill" style="width:' + p + '%"></div></div>' +
+            '<div class="tag-row">' +
+              (w !== 2 ? '<span class="item-tag' + (w === 3 ? ' imp-high' : '') + '">' + weightLabel(w) + ' priority</span>' : '') +
+              (freq ? '<span class="item-tag">' + escapeHtml(freq) + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<button class="remove" data-remove="' + t.id + '">×</button>' +
+        '</li>';
+        if (expandedId === t.id) {
+          html += '<li class="slider-row">' +
+            '<input type="range" min="0" max="100" step="5" value="' + p + '" id="slider-' + t.id + '" data-slider="' + t.id + '"/>' +
+            '<div class="slider-quick">' +
+              '<button data-quick="' + t.id + '" data-val="25">25%</button>' +
+              '<button data-quick="' + t.id + '" data-val="50">50%</button>' +
+              '<button data-quick="' + t.id + '" data-val="75">75%</button>' +
+              '<button data-quick="' + t.id + '" data-val="100">100%</button>' +
+            '</div>' +
+          '</li>';
+        }
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function leastDoneHtml() {
+    var ld = leastDone();
+    if (ld.length === 0) return "";
+    var html = '<div class="section-title">Falling behind on</div><ul class="rate-list">';
+    ld.forEach(function (x) {
+      html += '<li class="rate-item">' +
+        '<span class="rate-name">' + escapeHtml(x.task.name) + '</span>' +
+        '<div class="rate-track"><div class="rate-fill" style="width:' + x.stats.percent + '%"></div></div>' +
+        '<span class="rate-pct">' + x.stats.percent + '%</span>' +
+      '</li>';
+    });
+    html += '</ul>';
+    return html;
+  }
+
+  function renderWeek() {
+    var days = [];
+    for (var i = 6; i >= 0; i--) days.push(fmt(addDays(today, -i)));
+    var avg = rangeAvg(days);
+    var html = '<div class="pane">';
+    html += '<div class="section-title">This week</div>';
+    html += '<div class="avg-row"><div class="avg-num serif">' + (avg === null ? "–" : avg + "%") + '</div><div class="avg-label">average daily completion</div></div>';
+    html += '<div class="bars">';
+    days.forEach(function (d) {
+      var s = dayStats(d);
+      var pct = s ? s.percent : 0;
+      var date = new Date(d + "T00:00:00");
+      html += '<div class="bar-col"><div class="bar-track"><div class="bar-fill" style="height:' + pct + '%;opacity:' + (s ? 1 : 0.15) + '"></div></div>' +
+        '<div class="bar-label">' + dayLabel(date) + '</div></div>';
+    });
+    html += '</div>';
+    html += leastDoneHtml();
+    html += '</div>';
+    return html;
+  }
+
+  function renderMonth() {
+    var days = [];
+    for (var i = 29; i >= 0; i--) days.push(fmt(addDays(today, -i)));
+    var avg = rangeAvg(days);
+    var html = '<div class="pane">';
+    html += '<div class="section-title">Last 30 days</div>';
+    html += '<div class="avg-row"><div class="avg-num serif">' + (avg === null ? "–" : avg + "%") + '</div><div class="avg-label">average daily completion</div></div>';
+    html += '<div class="heat">';
+    days.forEach(function (d) {
+      var s = dayStats(d);
+      var bg;
+      if (s === null) bg = "var(--surface2)";
+      else {
+        var pct = Math.max(s.percent, 8);
+        bg = "color-mix(in srgb, var(--accent) " + pct + "%, var(--surface2))";
+      }
+      html += '<div class="heat-cell" title="' + d + (s ? ": " + s.percent + "%" : ": no tasks") + '" style="background:' + bg + '"></div>';
+    });
+    html += '</div>';
+    html += leastDoneHtml();
+    html += '</div>';
+    return html;
+  }
+
+  function renderTasks() {
+    var rec = recurringTasks();
+    var html = '<div class="pane">';
+    html += '<div class="section-title">Recurring tasks</div>';
+    if (rec.length === 0) {
+      html += '<div class="empty">No recurring tasks yet. Tap + to add one that repeats every day.</div>';
+    } else {
+      html += '<ul class="manage-list">';
+      rec.forEach(function (t) {
+        var week = taskRate(t.id, 7);
+        var month = taskRate(t.id, 30);
+        var freqTag = frequencyTag(t);
+        var w = getWeight(t);
+        html += '<li class="manage-item">' +
+          '<div class="manage-top"><span>' + escapeHtml(t.name) +
+            (w !== 2 ? ' <span class="item-tag' + (w === 3 ? ' imp-high' : '') + '">' + weightLabel(w) + '</span>' : '') +
+            (freqTag ? ' <span class="item-tag">' + escapeHtml(freqTag) + '</span>' : '') + '</span>' +
+          '<button class="remove" data-remove="' + t.id + '">×</button></div>' +
+          '<div class="manage-stats"><span>Week: ' + (week ? week.percent + "%" : "–") + '</span><span>Month: ' + (month ? month.percent + "%" : "–") + '</span></div>' +
+        '</li>';
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function render() {
+    var main = document.getElementById("main");
+    if (tab === "today") main.innerHTML = renderToday();
+    else if (tab === "week") main.innerHTML = renderWeek();
+    else if (tab === "month") main.innerHTML = renderMonth();
+    else main.innerHTML = renderTasks();
+
+    document.querySelectorAll(".tab").forEach(function (btn) {
+      btn.classList.toggle("on", btn.getAttribute("data-tab") === tab);
+    });
+    document.getElementById("fab").style.display = (tab === "today" || tab === "tasks") ? "block" : "none";
+
+    main.querySelectorAll("[data-toggle]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        toggleTask(el.getAttribute("data-toggle"), todayStr);
+      });
+    });
+    main.querySelectorAll("[data-remove]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        removeTask(el.getAttribute("data-remove"));
+      });
+    });
+    main.querySelectorAll("[data-expand]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var id = el.getAttribute("data-expand");
+        expandedId = expandedId === id ? null : id;
+        render();
+      });
+    });
+    main.querySelectorAll("[data-slider]").forEach(function (el) {
+      el.addEventListener("input", function () {
+        var id = el.getAttribute("data-slider");
+        var val = parseInt(el.value, 10);
+        liveUpdateProgress(id, val);
+      });
+      el.addEventListener("change", function () {
+        var id = el.getAttribute("data-slider");
+        var val = parseInt(el.value, 10);
+        setProgress(todayStr, id, val);
+        save();
+        render();
+      });
+    });
+    main.querySelectorAll("[data-quick]").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var id = el.getAttribute("data-quick");
+        var val = parseInt(el.getAttribute("data-val"), 10);
+        setProgress(todayStr, id, val);
+        save();
+        render();
+      });
+    });
+  }
+
+  // updates the on-screen numbers live while dragging, without a full re-render
+  // (a full re-render would recreate the slider mid-drag and interrupt it)
+  function liveUpdateProgress(taskId, val) {
+    setProgress(todayStr, taskId, val);
+    var item = document.querySelector('[data-expand="' + taskId + '"]');
+    if (item) {
+      var pctEl = item.querySelector(".item-pct");
+      var fillEl = item.querySelector(".mini-fill");
+      if (pctEl) { pctEl.textContent = val + "%"; pctEl.classList.toggle("full", val === 100); }
+      if (fillEl) fillEl.style.width = val + "%";
+    }
+    var stats = dayStats(todayStr);
+    var ringNum = document.querySelector(".ring-num");
+    var ringSub = document.querySelector(".ring-sub");
+    if (ringNum && stats) ringNum.textContent = stats.percent + "%";
+    if (ringSub && stats) ringSub.textContent = stats.done + " of " + stats.total + " fully done";
+    var ringCircle = document.querySelector(".ring-wrap svg circle:nth-child(2)");
+    if (ringCircle && stats) {
+      var r = 50, c = 2 * Math.PI * r;
+      ringCircle.setAttribute("stroke-dashoffset", c * (1 - stats.percent / 100));
+    }
+  }
+
+  // ---------- wiring ----------
+  document.querySelectorAll(".tab").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      tab = btn.getAttribute("data-tab");
+      render();
+    });
+  });
+
+  var overlay = document.getElementById("overlay");
+  var daysRow = document.getElementById("daysRow");
+  var typeChips = {
+    daily: document.getElementById("chipDaily"),
+    custom: document.getElementById("chipCustom"),
+    onetime: document.getElementById("chipOnce")
+  };
+  var newType = "daily";
+  var customDays = [];
+  var newWeight = 2;
+  var impChips = {
+    1: document.getElementById("impLow"),
+    2: document.getElementById("impMed"),
+    3: document.getElementById("impHigh")
+  };
+  Object.keys(impChips).forEach(function (w) {
+    impChips[w].addEventListener("click", function () {
+      newWeight = parseInt(w, 10);
+      Object.keys(impChips).forEach(function (k) { impChips[k].classList.toggle("on", k === w); });
+    });
+  });
+
+  function setType(type) {
+    newType = type;
+    Object.keys(typeChips).forEach(function (k) {
+      typeChips[k].classList.toggle("on", k === type);
+    });
+    daysRow.style.display = type === "custom" ? "flex" : "none";
+  }
+  function resetSheet() {
+    document.getElementById("newName").value = "";
+    customDays = [];
+    document.querySelectorAll(".daychip").forEach(function (el) { el.classList.remove("on"); });
+    setType("daily");
+    newWeight = 2;
+    Object.keys(impChips).forEach(function (k) { impChips[k].classList.toggle("on", k === "2"); });
+  }
+  function trySubmit() {
+    if (newType === "custom" && customDays.length === 0) {
+      daysRow.style.animation = "none";
+      // simple nudge: briefly outline the row to show a day must be picked
+      daysRow.style.outline = "1px solid var(--warn)";
+      setTimeout(function () { daysRow.style.outline = "none"; }, 900);
+      return;
+    }
+    addTask(document.getElementById("newName").value, newType, customDays, newWeight);
+    overlay.classList.remove("show");
+  }
+
+  document.getElementById("fab").addEventListener("click", function () {
+    resetSheet();
+    overlay.classList.add("show");
+    document.getElementById("newName").focus();
+  });
+  overlay.addEventListener("click", function (e) {
+    if (e.target === overlay) overlay.classList.remove("show");
+  });
+  document.getElementById("cancelAdd").addEventListener("click", function () {
+    overlay.classList.remove("show");
+  });
+  typeChips.daily.addEventListener("click", function () { setType("daily"); });
+  typeChips.custom.addEventListener("click", function () { setType("custom"); });
+  typeChips.onetime.addEventListener("click", function () { setType("onetime"); });
+
+  document.querySelectorAll(".daychip").forEach(function (el) {
+    el.addEventListener("click", function () {
+      var d = parseInt(el.getAttribute("data-day"), 10);
+      var idx = customDays.indexOf(d);
+      if (idx === -1) { customDays.push(d); el.classList.add("on"); }
+      else { customDays.splice(idx, 1); el.classList.remove("on"); }
+    });
+  });
+
+  document.getElementById("confirmAdd").addEventListener("click", trySubmit);
+  document.getElementById("newName").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") trySubmit();
+  });
+})();
+</script>
+</body>
+</html>
