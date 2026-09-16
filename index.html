@@ -393,8 +393,16 @@
     });
   }
   function save() {
-    dataRef().set({ tasks: state.tasks, completions: state.completions }, { merge: false })
-      .catch(function (err) { console.error("Couldn't save data", err); });
+    try {
+      dataRef().set({ tasks: state.tasks, completions: state.completions }, { merge: false })
+        .catch(function (err) {
+          console.error("Couldn't save data", err);
+          alert("Couldn't save: " + err.message + "\n\nYour change may not have been kept — please check your connection and try again.");
+        });
+    } catch (err) {
+      console.error("Couldn't save data (sync)", err);
+      alert("Couldn't save: " + err.message + "\n\nYour change may not have been kept.");
+    }
   }
 
   // ---------- core logic ----------
@@ -456,8 +464,8 @@
       name: name,
       type: type,
       weight: weight || 2,
-      date: type === "onetime" ? todayStr : undefined,
-      days: type === "custom" ? days.slice().sort() : undefined,
+      date: type === "onetime" ? todayStr : null,
+      days: type === "custom" ? days.slice().sort() : null,
       createdAt: todayStr,
       active: true
     });
